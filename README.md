@@ -1,0 +1,1 @@
+A deep learning training model for RoboCup SSL robot detection.
