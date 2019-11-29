@@ -1,3 +1,10 @@
+# required forder
 data/*/
-weight/*/
+weight/*
+log/*
+
+# test script
 test.*
+
+# python compiled
+*.pyc

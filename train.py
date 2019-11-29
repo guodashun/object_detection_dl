@@ -1,16 +1,165 @@
 import torch
+import os
+import time
 from dataset import VOCDetection
 from utils import SSDAugmentation
 from config import voc, MEANS
+from ssd import build_ssd
+from layers.modules import MultiBoxLoss
+from torch.autograd import Variable
+import torch.optim as optim
+import torch.utils.data as data
+from tensorboardX import SummaryWriter
+
+writer = SummaryWriter(log_dir="./log")
+
+dataset_root = "./data/11.21/marked/"
+learning_rate = 1e-4
+momentum = 5e-4
+weight_decay = 5e-4
+gamma = 0.1
+batch_size = 32
+num_workers = 0
+save_folder = "weight/"
+basenet = "vgg16-397923af.pth"
+start_iter = 0
+use_cuda = torch.cuda.is_available()
+resume = ""
 
 if torch.cuda.is_available():
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
-
-dataset_root = "./data/11.21/marked/"
 
 
 def train():
     cfg = voc
     voc_dataset = VOCDetection(root=dataset_root,
-                       transform=SSDAugmentation(cfg['min_dim'],
-                                                 MEANS))
+                               transform=SSDAugmentation(cfg['min_dim'],
+                                                         MEANS))
+    net = build_ssd('train', cfg['min_dim'], cfg['num_classes'])
+    # cuda parse
+    if use_cuda:
+        net.cuda()
+
+    # weight
+    if resume:
+        print('Resuming training, loading {}...'.format(resume))
+        net.load_weights(resume)
+    else:
+        vgg_weights = torch.load(os.path.join(save_folder, basenet))
+        print('Loading base network...')
+        net.vgg.load_state_dict(vgg_weights)
+
+    optimizer = optim.SGD(net.parameters(), lr=learning_rate, momentum=momentum,
+                          weight_decay=weight_decay)
+    criterion = MultiBoxLoss(cfg['num_classes'], 0.5, True, 0, True, 3, 0.5,
+                             False, True)
+    net.train()
+    # loss counters
+    # loc_loss = 0
+    # conf_loss = 0
+    # epoch = 0
+    print('Loading the dataset...')
+
+    # epoch_size = len(voc_dataset) // batch_size
+    step_index = 0
+
+    data_loader = data.DataLoader(voc_dataset, batch_size,
+                                  num_workers=num_workers,
+                                  shuffle=True, collate_fn=detection_collate,
+                                  pin_memory=True)
+    # create batch iterator
+    batch_iterator = iter(data_loader)
+    for iteration in range(start_iter, cfg['max_iter']):
+        # if args.visdom and iteration != 0 and (iteration % epoch_size == 0):
+        #     update_vis_plot(epoch, loc_loss, conf_loss, epoch_plot, None,
+        #                     'append', epoch_size)
+        #     # reset epoch loss counters
+        #     loc_loss = 0
+        #     conf_loss = 0
+        #     epoch += 1
+
+        if iteration in cfg['lr_steps']:
+            step_index += 1
+            adjust_learning_rate(optimizer, gamma, step_index)
+
+        # load train data
+        # images, targets = next(batch_iterator)
+        try:
+            images, targets = next(batch_iterator)
+        except StopIteration:
+            batch_iterator = iter(data_loader)
+            images, targets = next(batch_iterator)
+
+        if use_cuda:
+            images = Variable(images.cuda())
+            targets = [Variable(ann.cuda(), volatile=True) for ann in targets]
+        else:
+            images = Variable(images)
+            targets = [Variable(ann, volatile=True) for ann in targets]
+        # forward
+        t0 = time.time()
+        out = net(images)
+        # backprop
+        optimizer.zero_grad()
+        loss_l, loss_c = criterion(out, targets)
+        loss = loss_l + loss_c
+        loss.backward()
+        optimizer.step()
+        t1 = time.time()
+        # loc_loss += loss_l.data[0]
+        # conf_loss += loss_c.data[0]
+        # loc_loss += loss_l.data
+        # conf_loss += loss_c.data
+
+        writer.add_scalar('loss', loss.detach().cpu().numpy(), iteration)
+
+        if iteration % 10 == 0:
+            print('timer: %.4f sec.' % (t1 - t0))
+            print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data), end=' ')
+
+        # if args.visdom:
+        #     update_vis_plot(iteration, loss_l.data[0], loss_c.data[0],
+        #                     iter_plot, epoch_plot, 'append')
+
+        if iteration != 0 and iteration % 50 == 0:
+            print('Saving state, iter:', iteration)
+            torch.save(net.state_dict(),
+                       'weights/ssd300_VOC_' + repr(iteration) + '.pth')
+    torch.save(net.state_dict(),
+               save_folder + 'VOC' + '.pth')
+
+
+def detection_collate(batch):
+    """Custom collate fn for dealing with batches of images that have a different
+    number of associated object annotations (bounding boxes).
+
+    Arguments:
+        batch: (tuple) A tuple of tensor images and lists of annotations
+
+    Return:
+        A tuple containing:
+            1) (tensor) batch of images stacked on their 0 dim
+            2) (list of tensors) annotations for a given image are stacked on
+                                 0 dim
+    """
+    targets = []
+    imgs = []
+    for sample in batch:
+        imgs.append(sample[0])
+        targets.append(torch.FloatTensor(sample[1]))
+    return torch.stack(imgs, 0), targets
+
+
+def adjust_learning_rate(optimizer, gamma, step):
+    """Sets the learning rate to the initial LR decayed by 10 at every
+        specified step
+    # Adapted from PyTorch Imagenet example:
+    # https://github.com/pytorch/examples/blob/master/imagenet/main.py
+    """
+    lr = learning_rate * (gamma ** (step))
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+
+
+if __name__ == '__main__':
+    train()

@@ -6,7 +6,12 @@ import torch.utils.data as data
 import cv2
 import numpy as np
 
-VOC_CLASSES = 22
+VOC_CLASSES = (  # always index 0
+    'aeroplane', 'bicycle', 'bird', 'boat',
+    'bottle', 'bus', 'car', 'cat', 'chair',
+    'cow', 'diningtable', 'dog', 'horse',
+    'motorbike', 'person', 'pottedplant',
+    'sheep', 'sofa', 'train', 'tvmonitor', 'robot')
 
 
 class MultiRobotsDataset(object):
@@ -111,22 +116,22 @@ class VOCDetection(data.Dataset):
     """
 
     def __init__(self, root,
-                #  image_sets=[('2007', 'trainval'), ('2012', 'trainval')],
-                 image_sets=[('2019', 'trainval')],
+                 #  image_sets=[('2007', 'trainval'), ('2012', 'trainval')],
+                 # image_sets=[('2019', 'trainval')],
                  transform=None, target_transform=VOCAnnotationTransform(),
                  dataset_name='VOC19'):
         self.root = root
-        self.image_set = image_sets
+        # self.image_set = image_sets
         self.transform = transform
         self.target_transform = target_transform
         self.name = dataset_name
-        self._annopath = os.path.join('%s', 'Annotations', '%s.xml')
-        self._imgpath = os.path.join('%s', 'JPEGImages', '%s.jpg')
-        self.ids = list()
-        for (year, name) in image_sets:
-            rootpath = os.path.join(self.root, 'VOC' + year)
-            for line in open(os.path.join(rootpath, 'ImageSets', 'Main', name + '.txt')):
-                self.ids.append((rootpath, line.strip()))
+        self._annopath = list(sorted(os.listdir(os.path.join(self.root, "annotation"))))
+        self._imgpath = list(sorted(os.listdir(os.path.join(self.root, "imgs"))))
+        # self.ids = list()
+        # for (year, name) in image_sets:
+        #     rootpath = os.path.join(self.root, 'VOC' + year)
+        #     for line in open(os.path.join(rootpath, 'ImageSets', 'Main', name + '.txt')):
+        #         self.ids.append((rootpath, line.strip()))
 
     def __getitem__(self, index):
         im, gt, h, w = self.pull_item(index)
@@ -136,11 +141,9 @@ class VOCDetection(data.Dataset):
     def __len__(self):
         return len(self.ids)
 
-    def pull_item(self, index):
-        img_id = self.ids[index]
-
-        target = ET.parse(self._annopath % img_id).getroot()
-        img = cv2.imread(self._imgpath % img_id)
+    def pull_item(self, idx):
+        target = ET.parse(os.path.join(self.root, "annotation_robot", self.boxes[idx])).getroot()
+        img = cv2.imread(os.path.join(self.root, "imgs", self.imgs[idx]))
         height, width, channels = img.shape
 
         if self.target_transform is not None:
@@ -156,36 +159,13 @@ class VOCDetection(data.Dataset):
         return torch.from_numpy(img).permute(2, 0, 1), target, height, width
         # return torch.from_numpy(img), target, height, width
 
-    def pull_image(self, index):
-        '''Returns the original image object at index in PIL form
+    def pull_image(self, idx):
+        return cv2.imread(os.path.join(self.root, "imgs", self.imgs[idx]), cv2.IMREAD_COLOR)
 
-        Note: not using self.__getitem__(), as any transformations passed in
-        could mess up this functionality.
-
-        Argument:
-            index (int): index of img to show
-        Return:
-            PIL img
-        '''
-        img_id = self.ids[index]
-        return cv2.imread(self._imgpath % img_id, cv2.IMREAD_COLOR)
-
-    def pull_anno(self, index):
-        '''Returns the original annotation of image at index
-
-        Note: not using self.__getitem__(), as any transformations passed in
-        could mess up this functionality.
-
-        Argument:
-            index (int): index of img to get annotation of
-        Return:
-            list:  [img_id, [(label, bbox coords),...]]
-                eg: ('001718', [('dog', (96, 13, 438, 332))])
-        '''
-        img_id = self.ids[index]
-        anno = ET.parse(self._annopath % img_id).getroot()
+    def pull_anno(self, idx):
+        anno = ET.parse(os.path.join(self.root, "annotation_robot", self.boxes[idx])).getroot()
         gt = self.target_transform(anno, 1, 1)
-        return img_id[1], gt
+        return idx, gt
 
     def pull_tensor(self, index):
         '''Returns the original image at an index in tensor form
@@ -203,6 +183,8 @@ class VOCDetection(data.Dataset):
 
 # test
 if __name__ == '__main__':
-    module = MultiRobotsDataset("./data/11.21/marked/", None)
-    _, target = module.__getitem__(3)
-    print(target["boxes"][0][0])
+    # module = MultiRobotsDataset("./data/11.21/marked/", None)
+    # _, target = module.__getitem__(3)
+    # print(target["boxes"][0][0])
+    module = VOCDetection("./data/11.21/marked/")
+    print(module._annopath[150], module._imgpath[150])
