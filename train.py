@@ -9,19 +9,20 @@ from layers.modules import MultiBoxLoss
 from torch.autograd import Variable
 import torch.optim as optim
 import torch.utils.data as data
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter(log_dir="./log")
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+writer = SummaryWriter(log_dir="./log/second")
 
 dataset_root = "./data/11.21/marked/"
 learning_rate = 1e-4
 momentum = 5e-4
 weight_decay = 5e-4
 gamma = 0.1
-batch_size = 32
-num_workers = 0
-save_folder = "weight/"
-basenet = "vgg16-397923af.pth"
+batch_size = 16
+num_workers = 16
+save_folder = "weights/"
+basenet = "vgg16_reducedfc.pth"
 start_iter = 0
 use_cuda = torch.cuda.is_available()
 resume = ""
@@ -37,20 +38,24 @@ def train():
                                                          MEANS))
     net = build_ssd('train', cfg['min_dim'], cfg['num_classes'])
     # cuda parse
-    if use_cuda:
-        net.cuda()
-
+    net.to(device)
     # weight
     if resume:
         print('Resuming training, loading {}...'.format(resume))
         net.load_weights(resume)
     else:
         vgg_weights = torch.load(os.path.join(save_folder, basenet))
+        # print(vgg_weights)
+        # print(vgg_weights['features'])
+        # for k in list(vgg_weights.keys()):
+        #     _, new_key = k.split(".", 1)
+        #     print("wzdebug: ", k, new_key)
+        #     # print(vgg_weights[k])
+        #     vgg_weights[new_key] = vgg_weights.pop(k)
         print('Loading base network...')
         net.vgg.load_state_dict(vgg_weights)
 
-    optimizer = optim.SGD(net.parameters(), lr=learning_rate, momentum=momentum,
-                          weight_decay=weight_decay)
+    optimizer = optim.Adam(net.parameters(), lr=learning_rate, weight_decay=weight_decay)
     criterion = MultiBoxLoss(cfg['num_classes'], 0.5, True, 0, True, 3, 0.5,
                              False, True)
     net.train()
@@ -90,12 +95,10 @@ def train():
             batch_iterator = iter(data_loader)
             images, targets = next(batch_iterator)
 
-        if use_cuda:
-            images = Variable(images.cuda())
-            targets = [Variable(ann.cuda(), volatile=True) for ann in targets]
-        else:
-            images = Variable(images)
-            targets = [Variable(ann, volatile=True) for ann in targets]
+        images = Variable(images.to(device))
+        with torch.no_grad():
+            targets = [ann.to(device) for ann in targets]
+
         # forward
         t0 = time.time()
         out = net(images)

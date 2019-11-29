@@ -139,11 +139,11 @@ class VOCDetection(data.Dataset):
         return im, gt
 
     def __len__(self):
-        return len(self.ids)
+        return len(self._imgpath)
 
     def pull_item(self, idx):
-        target = ET.parse(os.path.join(self.root, "annotation_robot", self.boxes[idx])).getroot()
-        img = cv2.imread(os.path.join(self.root, "imgs", self.imgs[idx]))
+        target = ET.parse(os.path.join(self.root, "annotation", self._annopath[idx])).getroot()
+        img = cv2.imread(os.path.join(self.root, "imgs", self._imgpath[idx]))
         height, width, channels = img.shape
 
         if self.target_transform is not None:
@@ -160,10 +160,10 @@ class VOCDetection(data.Dataset):
         # return torch.from_numpy(img), target, height, width
 
     def pull_image(self, idx):
-        return cv2.imread(os.path.join(self.root, "imgs", self.imgs[idx]), cv2.IMREAD_COLOR)
+        return cv2.imread(os.path.join(self.root, "imgs", self._imgpath[idx]), cv2.IMREAD_COLOR)
 
     def pull_anno(self, idx):
-        anno = ET.parse(os.path.join(self.root, "annotation_robot", self.boxes[idx])).getroot()
+        anno = ET.parse(os.path.join(self.root, "annotation", self._annopath[idx])).getroot()
         gt = self.target_transform(anno, 1, 1)
         return idx, gt
 

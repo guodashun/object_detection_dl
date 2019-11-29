@@ -1,6 +1,6 @@
 # required forder
 data/*/
-weight/*
+weights/*
 log/*
 
 # test script
