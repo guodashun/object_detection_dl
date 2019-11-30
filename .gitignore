@@ -8,3 +8,6 @@ test.*
 
 # python compiled
 *.pyc
+
+# test img
+*.png
