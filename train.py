@@ -12,20 +12,19 @@ import torch.utils.data as data
 from torch.utils.tensorboard import SummaryWriter
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-writer = SummaryWriter(log_dir="./log/second")
+writer = SummaryWriter(log_dir="./log/forth")
 
 dataset_root = "./data/11.21/marked/"
 learning_rate = 1e-4
 momentum = 5e-4
 weight_decay = 5e-4
 gamma = 0.1
-batch_size = 16
-num_workers = 16
+batch_size = 8
+num_workers = 8
 save_folder = "weights/"
 basenet = "vgg16_reducedfc.pth"
-start_iter = 0
-use_cuda = torch.cuda.is_available()
-resume = ""
+start_iter = 600
+resume = "weights/ssd300_VOC_600.pth"
 
 if torch.cuda.is_available():
     torch.set_default_tensor_type('torch.cuda.FloatTensor')

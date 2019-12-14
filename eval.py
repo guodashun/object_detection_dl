@@ -69,7 +69,7 @@ def eval(net, testset, transform):
 if __name__ == '__main__':
     cfg = voc
     net = build_ssd('test', cfg['min_dim'], cfg['num_classes'])
-    net.load_state_dict(torch.load('weights/ssd300_VOC_2100.pth'))
+    net.load_state_dict(torch.load('weights/ssd300_VOC_25000.pth'))
     net.eval()
     testset = VOCDetection('./data/11.21/test', None, VOCAnnotationTransform())
     # net = net.to(device)

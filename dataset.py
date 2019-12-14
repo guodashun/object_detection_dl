@@ -30,10 +30,11 @@ class MultiRobotsDataset(object):
         anno = ET.parse(box_path)
         for obj in anno.iterfind('object'):
             if obj.findtext('name') == "robot":
-                xmin = obj.findtext("bndbox/xmin")
-                xmax = obj.findtext("bndbox/xmax")
-                ymin = obj.findtext("bndbox/ymin")
-                ymax = obj.findtext("bndbox/ymax")
+                obj = obj.iterfind('bndbox')
+                xmin = obj.findtext("xmin")
+                xmax = obj.findtext("xmax")
+                ymin = obj.findtext("ymin")
+                ymax = obj.findtext("ymax")
                 boxes.append([xmin, xmax, ymin, ymax])
 
         target = {}
