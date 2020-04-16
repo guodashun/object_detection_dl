@@ -15,11 +15,11 @@ voc = {
     'num_classes': 22,
     'lr_steps': (80000, 100000, 120000),
     'max_iter': 1000000,
-    'feature_maps': [38, 19, 10, 5, 3, 1],# edit it 前两层球  后四层车
+    'feature_maps': [60, 50, 50, 38, 38, 19],# edit it 前两层球  后四层车
     'min_dim': 300,
-    'steps': [8, 16, 32, 64, 100, 300],# edit it  对应feature maps 乘积为300左右
-    'min_sizes': [30, 60, 111, 162, 213, 264],# edit it 车和球的大小
-    'max_sizes': [60, 111, 162, 213, 264, 315],# edit it 畸变可能引起的变化，给予余量
+    'steps': [5, 6, 6, 8, 8, 16],# edit it  对应feature maps 乘积为300左右
+    'min_sizes': [0.5, 0.55, 0.6, 0.67, 0.7, 0.7],# edit it 车和球的大小
+    'max_sizes': [1, 1.05, 1.1, 1.15, 1.2, 1.2],# edit it 畸变可能引起的变化，给予余量
     # 对应ssd.py 4 6 6 6 4 4
     'aspect_ratios': [[2], [2, 3], [2, 3], [2, 3], [2], [2]],# edit it 根据畸变来调车和球的长方形
     'variance': [0.1, 0.2],
