@@ -1,6 +1,5 @@
 # required forder
 data/*/
-weights/*
 log/*
 
 # test script
@@ -11,3 +10,6 @@ test.*
 
 # test img
 *.png
+
+#weights
+*.pth
