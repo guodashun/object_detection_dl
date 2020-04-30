@@ -56,6 +56,8 @@ def eval(net, testset, transform):
                               (int(pt[0]), int(pt[1])),
                               (int(pt[2]), int(pt[3])),
                               COLORS[i % 3], 2)
+                cv2.putText(img, str(score), (int(pt[0]), int(pt[1])))
+                # 照片/添加的文字/左上角坐标/字体/字体大小/颜色/字体粗细
                 cv2.imwrite(testset._imgpath[0] + 'new.png', img)
                 # print('wzdebug:', coords)
                 # cv2.imshow('img', img)
