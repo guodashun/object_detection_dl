@@ -4,8 +4,8 @@ import os
 import xml.etree.ElementTree as ET
 import random
 
-input_path = "./data/11.21/test"
-output_path = "./data/11.21/test_out"
+input_path = "../data/11.21/marked"
+output_path = "./data/custom"
 train_rate = 0.7
 pic_size = [1500, 1000]
 classes_names = [i.strip('\n') for i in open(output_path + "/classes.names", 'r').readlines()]
@@ -15,7 +15,7 @@ def write():
 	raw_dataset_dir = os.listdir(input_path + "/imgs")
 	train_list = open(output_path + '/train.txt', 'w')
 	for i in raw_dataset_dir:
-		anno_name = i.reomve(".png")
+		anno_name = i.replace(".png", "")
 		anno_convert(anno_name)
 		train_list.write(output_path + "/images/" + str(i) + '\n')
 
@@ -23,24 +23,24 @@ def write():
 
 
 def anno_convert(anno_name):
-	anno = ET.parse(input_path + "/annotation/" + anno_name + ".xml")
-	anno_list = open(output_path + "/labels/" + anno_name + ".txt")
+    anno = ET.parse(input_path + "/annotation/" + anno_name + ".xml")
+    anno_list = open(output_path + "/labels/" + anno_name + ".txt", "a")
     for obj in anno.iterfind('object'):
-    	anno_data = [] # idx, x, y, w, h
-    	anno_data[0] = classes_names.index(obj.findtext('name'))
-    	print("get class index:", idx)# for debug
+        anno_data = [] # idx, x, y, w, h
+        anno_data.append(classes_names.index(obj.findtext('name')))
         obj = obj.find('bndbox')
-        xmin = obj.findtext("xmin")
-        xmax = obj.findtext("xmax")
-        ymin = obj.findtext("ymin")
-        ymax = obj.findtext("ymax")
-        anno_data[1] = (xmin + xmax) / 2 / pic_size[0]
-        anno_data[2] = (ymin + ymax) / 2 / pic_size[1]
-        anno_data[3] = (xmax - xmin) / pic_size[0]
-        anno_data[4] = (ymax - ymin) / pic_size[1]
+        xmin = int(obj.findtext("xmin"))
+        xmax = int(obj.findtext("xmax"))
+        ymin = int(obj.findtext("ymin"))
+        ymax = int(obj.findtext("ymax"))
+        anno_data.append((xmin + xmax) / 2 / pic_size[0])
+        anno_data.append((ymin + ymax) / 2 / pic_size[1])
+        anno_data.append((xmax - xmin) / pic_size[0])
+        anno_data.append((ymax - ymin) / pic_size[1])
         for i in anno_data:
-        	anno_list.write(str(i) + ' ')
+            anno_list.write(str(i) + ' ')
         anno_list.write('\n')
+        print("get dataset name :", anno_name) # for debug
     anno_list.close()
 
 
