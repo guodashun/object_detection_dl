@@ -11,8 +11,9 @@ import torch.optim as optim
 import torch.utils.data as data
 from torch.utils.tensorboard import SummaryWriter
 
+
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-writer = SummaryWriter(log_dir="./log/forth")
+
 
 dataset_root = "./data/11.21/marked/"
 learning_rate = 1e-4
@@ -22,9 +23,12 @@ gamma = 0.1
 batch_size = 8
 num_workers = 8
 save_folder = "weights/"
+save_semi_folder = "param4/"
 basenet = "vgg16_reducedfc.pth"
-start_iter = 600
-resume = "weights/ssd300_VOC_600.pth"
+start_iter = 0
+resume = ""
+
+writer = SummaryWriter(log_dir="./log/" + save_semi_folder)
 
 if torch.cuda.is_available():
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
@@ -59,12 +63,12 @@ def train():
                              False, True)
     net.train()
     # loss counters
-    # loc_loss = 0
-    # conf_loss = 0
-    # epoch = 0
+    loc_loss = 0
+    conf_loss = 0
+    epoch = 0
     print('Loading the dataset...')
 
-    # epoch_size = len(voc_dataset) // batch_size
+    epoch_size = len(voc_dataset) // batch_size
     step_index = 0
 
     data_loader = data.DataLoader(voc_dataset, batch_size,
@@ -74,13 +78,10 @@ def train():
     # create batch iterator
     batch_iterator = iter(data_loader)
     for iteration in range(start_iter, cfg['max_iter']):
-        # if args.visdom and iteration != 0 and (iteration % epoch_size == 0):
-        #     update_vis_plot(epoch, loc_loss, conf_loss, epoch_plot, None,
-        #                     'append', epoch_size)
+        # if iteration != 0 and (iteration % epoch_size == 0):
+        #     # update_vis_plot(epoch, loc_loss, conf_loss, epoch_plot, None,
+        #     #                 'append', epoch_size)
         #     # reset epoch loss counters
-        #     loc_loss = 0
-        #     conf_loss = 0
-        #     epoch += 1
 
         if iteration in cfg['lr_steps']:
             step_index += 1
@@ -108,12 +109,17 @@ def train():
         loss.backward()
         optimizer.step()
         t1 = time.time()
-        # loc_loss += loss_l.data[0]
-        # conf_loss += loss_c.data[0]
+        loc_loss += loss_l.item()
+        conf_loss += loss_c.item()
         # loc_loss += loss_l.data
         # conf_loss += loss_c.data
 
-        writer.add_scalar('loss', loss.detach().cpu().numpy(), iteration)
+        if iteration != 0 and (iteration % epoch_size == 0):
+            epoch += 1
+            writer.add_scalar('loss', loc_loss + conf_loss, epoch)
+            print("epoch: ", epoch, "Loss: %.4f" % (loc_loss + conf_loss))
+            loc_loss = 0
+            conf_loss = 0
 
         if iteration % 10 == 0:
             print('timer: %.4f sec.' % (t1 - t0))
@@ -123,10 +129,10 @@ def train():
         #     update_vis_plot(iteration, loss_l.data[0], loss_c.data[0],
         #                     iter_plot, epoch_plot, 'append')
 
-        if iteration != 0 and iteration % 200 == 0:
+        if iteration != 0 and iteration % 40000 == 0:
             print('Saving state, iter:', iteration)
             torch.save(net.state_dict(),
-                       'weights/ssd300_VOC_' + repr(iteration) + '.pth')
+                       save_folder + save_semi_folder + 'ssd300_VOC_' + repr(iteration) + '.pth')
     torch.save(net.state_dict(),
                save_folder + 'VOC' + '.pth')
 

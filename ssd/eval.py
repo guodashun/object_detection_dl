@@ -8,6 +8,9 @@ from torch.autograd import Variable
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 COLORS = [(255, 0, 0), (0, 255, 0), (0, 0, 255)]
+weight_num = "param3"
+weight_name = "weights/" + weight_num + "/ssd300_VOC_"
+pic_name = ""
 
 
 def base_transform(image, size, mean):
@@ -43,22 +46,23 @@ def eval(net, testset, transform):
         pred_num = 0
         for i in range(detections.size(1)):
             j = 0
-            while detections[0, i, j, 0] >= 0.6:
+            while detections[0, i, j, 0] >= 0.2:
+                # print("fuck", i ,j)
                 # if pred_num == 0:
                 #     with open(filename, mode='a') as f:
                 #         f.write('PREDICTIONS: '+'\n')
                 score = detections[0, i, j, 0]
                 # label_name = labelmap[i - 1]
                 pt = (detections[0, i, j, 1:] * scale).cpu().numpy()
-                coords = (pt[0], pt[1], pt[2], pt[3])
+                # coords = (pt[0], pt[1], pt[2], pt[3])
                 cv2.imread(testset._imgpath[0])
                 cv2.rectangle(img,
                               (int(pt[0]), int(pt[1])),
                               (int(pt[2]), int(pt[3])),
                               COLORS[i % 3], 2)
-                cv2.putText(img, str(score), (int(pt[0]), int(pt[1])))
-                # 照片/添加的文字/左上角坐标/字体/字体大小/颜色/字体粗细
-                cv2.imwrite(testset._imgpath[0] + 'new.png', img)
+                score = round(score.item(), 3)
+                cv2.putText(img, str(score), (int(pt[0]), int(pt[1])), cv2.FONT_HERSHEY_PLAIN, 1.2, (0, 0, 255), 2)
+                cv2.imwrite(pic_name.replace(weight_num, "pic") + '.png', img)
                 # print('wzdebug:', coords)
                 # cv2.imshow('img', img)
                 pred_num += 1
@@ -71,10 +75,14 @@ def eval(net, testset, transform):
 if __name__ == '__main__':
     cfg = voc
     net = build_ssd('test', cfg['min_dim'], cfg['num_classes'])
-    net.load_state_dict(torch.load('weights/ssd300_VOC_25000.pth'))
-    net.eval()
-    testset = VOCDetection('./data/11.21/test', None, VOCAnnotationTransform())
-    # net = net.to(device)
-    # img = cv2.imread('./data/11.21/raw/1/Acquisition-19060477-200.png')
-    # img = torch.from_numpy(img.transpose((2, 0, 1))).float().unsqueeze(0).to(device)
-    eval(net, testset, BaseTransform(net.size, (104, 117, 123)))
+
+    for i in range(9):
+        pic_name = weight_name + str((i + 1) * 40000) + ".pth"
+        print("processing", pic_name)
+        net.load_state_dict(torch.load(pic_name))
+        net.eval()
+        testset = VOCDetection('./data/11.21/test', None, VOCAnnotationTransform())
+        # net = net.to(device)
+        # img = cv2.imread('./data/11.21/raw/1/Acquisition-19060477-200.png')
+        # img = torch.from_numpy(img.transpose((2, 0, 1))).float().unsqueeze(0).to(device)
+        eval(net, testset, BaseTransform(net.size, (104, 117, 123)))
