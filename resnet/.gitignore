@@ -1,0 +1,20 @@
+# required forder
+data/*/
+log/*
+
+# test script
+test.*
+
+# python compiled
+*.pyc
+
+# test img
+*.png
+
+# weights
+*.pth
+
+# label
+train.txt
+test.txt
+~                                                                                                   

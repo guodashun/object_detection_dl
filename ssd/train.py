@@ -15,7 +15,7 @@ from torch.utils.tensorboard import SummaryWriter
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
-dataset_root = "./data/11.21/marked/"
+dataset_root = ""
 learning_rate = 1e-4
 momentum = 5e-4
 weight_decay = 5e-4
@@ -23,10 +23,15 @@ gamma = 0.1
 batch_size = 8
 num_workers = 8
 save_folder = "weights/"
-save_semi_folder = "param4/"
+save_semi_folder = ""
 basenet = "vgg16_reducedfc.pth"
 start_iter = 0
 resume = ""
+
+if not os.path.exists(save_folder + save_semi_folder):
+    os.makedirs(save_folder + save_semi_folder)
+if not os.path.exists("./log/" + save_semi_folder):
+    os.makedirs("./log/" + save_semi_folder)
 
 writer = SummaryWriter(log_dir="./log/" + save_semi_folder)
 
@@ -106,6 +111,7 @@ def train():
         optimizer.zero_grad()
         loss_l, loss_c = criterion(out, targets)
         loss = loss_l + loss_c
+        torch.nn.utils.clip_grad_norm_(net.parameters(), max_norm=2, norm_type=2)
         loss.backward()
         optimizer.step()
         t1 = time.time()
@@ -116,8 +122,8 @@ def train():
 
         if iteration != 0 and (iteration % epoch_size == 0):
             epoch += 1
-            writer.add_scalar('loss', loc_loss + conf_loss, epoch)
-            print("epoch: ", epoch, "Loss: %.4f" % (loc_loss + conf_loss))
+            writer.add_scalar('loss', (loc_loss + conf_loss) / epoch_size, epoch)
+            print("epoch: ", epoch, "Loss: %.4f" % ((loc_loss + conf_loss) / epoch_size))
             loc_loss = 0
             conf_loss = 0
 
@@ -129,7 +135,7 @@ def train():
         #     update_vis_plot(iteration, loss_l.data[0], loss_c.data[0],
         #                     iter_plot, epoch_plot, 'append')
 
-        if iteration != 0 and iteration % 40000 == 0:
+        if iteration != 0 and iteration % 4000 == 0:
             print('Saving state, iter:', iteration)
             torch.save(net.state_dict(),
                        save_folder + save_semi_folder + 'ssd300_VOC_' + repr(iteration) + '.pth')
